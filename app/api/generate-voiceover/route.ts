@@ -11,13 +11,6 @@ const OPENAI_VOICE_MAP: Record<string, string> = {
   Energetic: "verse",
 };
 
-const GATEWAY_VOICE_MAP: Record<string, string> = {
-  Natural: "eve",
-  "Deep & cinematic": "ara",
-  "Warm & friendly": "rex",
-  Energetic: "sal",
-};
-
 function styleInstructions(style: string) {
   switch (style) {
     case "Deep & cinematic":
@@ -55,7 +48,7 @@ async function generateGateway(text: string, voiceStyle: string) {
   if (!process.env.VERCEL && !process.env.AI_GATEWAY_API_KEY) {
     throw new Error("Vercel AI Gateway is not available in this environment. Deploy on Vercel or configure AI_GATEWAY_API_KEY.");
   }
-  const voice = GATEWAY_VOICE_MAP[voiceStyle] || GATEWAY_VOICE_MAP.Natural;
+  const voice = "eve";
   const result = await generateSpeech({
     model: gateway.speechModel("spacexai/grok-tts"),
     text,
@@ -75,11 +68,7 @@ async function generateElevenLabs(text: string, voiceStyle: string) {
   }
   const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`, {
     method: "POST",
-    headers: {
-      "xi-api-key": apiKey,
-      "Content-Type": "application/json",
-      Accept: "audio/mpeg",
-    },
+    headers: { "xi-api-key": apiKey, "Content-Type": "application/json", Accept: "audio/mpeg" },
     body: JSON.stringify({
       text,
       model_id: "eleven_multilingual_v2",
@@ -104,37 +93,30 @@ export async function POST(request: Request) {
     if (!scene || typeof scene.voiceover !== "string" || !scene.voiceover.trim()) {
       return NextResponse.json({ error: "A scene with voiceover text is required." }, { status: 400 });
     }
-
     if (scene.voiceover.length > 4096) {
       return NextResponse.json({ error: "This scene is too long for a single voiceover. Please split it into smaller scenes." }, { status: 400 });
     }
 
     const attempts: string[] = [];
     const run = async (name: string, fn: () => Promise<{ audio_url: string; voice: string; provider: string }>) => {
-      try {
-        return await fn();
-      } catch (error) {
+      try { return await fn(); }
+      catch (error) {
         attempts.push(`${name}: ${error instanceof Error ? error.message : "failed"}`);
         return null;
       }
     };
 
     let result: { audio_url: string; voice: string; provider: string } | null = null;
-
     if (provider === "openai") result = await run("openai", () => generateOpenAI(scene.voiceover, voiceStyle));
     else if (provider === "gateway-xai") result = await run("ai-gateway-grok", () => generateGateway(scene.voiceover, voiceStyle));
     else if (provider === "elevenlabs") result = await run("elevenlabs", () => generateElevenLabs(scene.voiceover, voiceStyle));
     else {
       result = await run("openai", () => generateOpenAI(scene.voiceover, voiceStyle));
       if (!result) result = await run("ai-gateway-grok", () => generateGateway(scene.voiceover, voiceStyle));
-      if (!result && process.env.ELEVENLABS_API_KEY && process.env.ELEVENLABS_VOICE_ID) {
-        result = await run("elevenlabs", () => generateElevenLabs(scene.voiceover, voiceStyle));
-      }
+      if (!result && process.env.ELEVENLABS_API_KEY && process.env.ELEVENLABS_VOICE_ID) result = await run("elevenlabs", () => generateElevenLabs(scene.voiceover, voiceStyle));
     }
 
-    if (!result) {
-      return NextResponse.json({ error: `All selected voice providers failed. ${attempts.join(" | ")}` }, { status: 500 });
-    }
+    if (!result) return NextResponse.json({ error: `All selected voice providers failed. ${attempts.join(" | ")}` }, { status: 500 });
 
     return NextResponse.json({
       success: true,
@@ -147,7 +129,6 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Voiceover generation error:", error);
-    const message = error instanceof Error ? error.message : "Failed to generate voiceover.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to generate voiceover." }, { status: 500 });
   }
 }
