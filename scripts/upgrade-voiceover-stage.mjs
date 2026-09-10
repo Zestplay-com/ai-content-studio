@@ -41,7 +41,9 @@ text = text.replace(
 const voiceMarker = '              {/* VOICEOVER_V1 */}';
 const voiceStart = text.indexOf(voiceMarker);
 if (voiceStart === -1) throw new Error("VOICEOVER_V1 marker was not found.");
-const sectionStart = text.indexOf('<section style={{ ...card, marginTop: 18, borderColor: "#29476a" }}>', voiceStart);
+text = text.slice(0, voiceStart) + '              {/* VOICEOVER_STAGE_V1 */}\n' + text.slice(voiceStart);
+
+const sectionStart = text.indexOf('<section style={{ ...card, marginTop: 18, borderColor: "#29476a" }}>', voiceStart + 32);
 if (sectionStart === -1) throw new Error("Voiceover section was not found after VOICEOVER_V1 marker.");
 text = text.slice(0, sectionStart) + text.slice(sectionStart).replace(
   '<section style={{ ...card, marginTop: 18, borderColor: "#29476a" }}>',
@@ -66,11 +68,6 @@ if (controlsStart !== -1 && !text.includes("VOICEOVER_STAGE_PROVIDER_CONTROLS"))
 text = text.replace(
   'onClick={() => document.getElementById("voiceover-section")?.scrollIntoView({ behavior: "smooth", block: "start" })}',
   'onClick={() => { setShowVoiceoverStage(true); window.requestAnimationFrame(() => document.getElementById("voiceover-section")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}',
-);
-
-text = text.replace(
-  '              {/* VOICEOVER_STAGE_V1 */}',
-  '              {/* VOICEOVER_STAGE_V1 */}',
 );
 
 writeFileSync(path, text);
