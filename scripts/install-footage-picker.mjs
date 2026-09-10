@@ -30,7 +30,7 @@ text = text.replace(
 
 text = text.replace(
   '      setStockMatches(Array.isArray(data.matches) ? data.matches : []);\n',
-  '      const matches = Array.isArray(data.matches) ? data.matches : [];\n      setStockMatches(matches);\n      setSelectedClips(Object.fromEntries(matches.map((match) => [match.scene_number, match.results[0]?.id]).filter((entry) => entry[1] !== undefined)));\n',
+  '      const matches = Array.isArray(data.matches) ? data.matches : [];\n      setStockMatches(matches);\n      setSelectedClips(Object.fromEntries(matches.map((match) => [match.scene_number, match.results[0]?.id]).filter((entry) => entry[1] !== undefined)) as Record<number, number>);\n',
 );
 
 const marker = "              {stockError && ";
