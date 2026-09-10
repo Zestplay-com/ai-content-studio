@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
-import { experimental_generateSpeech as generateSpeech, gateway } from "ai";
 
 export const runtime = "nodejs";
 
@@ -34,7 +33,7 @@ async function generateOpenAI(text: string, voiceStyle: string) {
   const client = new OpenAI({ apiKey });
   const voice = OPENAI_VOICE_MAP[voiceStyle] || OPENAI_VOICE_MAP.Natural;
   const speech = await client.audio.speech.create({
-    model: "gpt-4o-mini-tts",
+    model: process.env.OPENAI_TTS_MODEL || "gpt-4o-mini-tts",
     voice,
     input: text,
     instructions: styleInstructions(voiceStyle),
@@ -44,27 +43,11 @@ async function generateOpenAI(text: string, voiceStyle: string) {
   return { audio_url: dataUrl(new Uint8Array(await speech.arrayBuffer())), voice, provider: "openai" };
 }
 
-async function generateGateway(text: string, voiceStyle: string) {
-  if (!process.env.VERCEL && !process.env.AI_GATEWAY_API_KEY) {
-    throw new Error("Vercel AI Gateway is not available in this environment. Deploy on Vercel or configure AI_GATEWAY_API_KEY.");
-  }
-  const voice = "eve";
-  const result = await generateSpeech({
-    model: gateway.speechModel("spacexai/grok-tts"),
-    text,
-    voice,
-    outputFormat: "mp3",
-    instructions: styleInstructions(voiceStyle),
-    speed: 1,
-  });
-  return { audio_url: dataUrl(result.audio.uint8Array), voice, provider: "ai-gateway-grok" };
-}
-
 async function generateElevenLabs(text: string, voiceStyle: string) {
   const apiKey = process.env.ELEVENLABS_API_KEY;
   const voiceId = process.env.ELEVENLABS_VOICE_ID;
   if (!apiKey || !voiceId) {
-    throw new Error("ElevenLabs is optional but not configured. Add ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID, or use Auto/OpenAI/Gateway.");
+    throw new Error("ElevenLabs is optional but not configured. Add ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID, or use Auto/OpenAI.");
   }
   const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`, {
     method: "POST",
@@ -80,7 +63,7 @@ async function generateElevenLabs(text: string, voiceStyle: string) {
     const detail = await response.text();
     throw new Error(`ElevenLabs request failed (${response.status}): ${detail.slice(0, 300)}`);
   }
-  return { audio_url: dataUrl(new Uint8Array(await response.arrayBuffer())), voice: voiceId, provider: "elevenlabs", voice_style: voiceStyle };
+  return { audio_url: dataUrl(new Uint8Array(await response.arrayBuffer())), voice: voiceId, provider: "elevenlabs" };
 }
 
 export async function POST(request: Request) {
@@ -108,15 +91,16 @@ export async function POST(request: Request) {
 
     let result: { audio_url: string; voice: string; provider: string } | null = null;
     if (provider === "openai") result = await run("openai", () => generateOpenAI(scene.voiceover, voiceStyle));
-    else if (provider === "gateway-xai") result = await run("ai-gateway-grok", () => generateGateway(scene.voiceover, voiceStyle));
     else if (provider === "elevenlabs") result = await run("elevenlabs", () => generateElevenLabs(scene.voiceover, voiceStyle));
     else {
+      // Auto deliberately uses direct provider APIs. It never depends on Vercel AI Gateway.
       result = await run("openai", () => generateOpenAI(scene.voiceover, voiceStyle));
-      if (!result) result = await run("ai-gateway-grok", () => generateGateway(scene.voiceover, voiceStyle));
-      if (!result && process.env.ELEVENLABS_API_KEY && process.env.ELEVENLABS_VOICE_ID) result = await run("elevenlabs", () => generateElevenLabs(scene.voiceover, voiceStyle));
+      if (!result && process.env.ELEVENLABS_API_KEY && process.env.ELEVENLABS_VOICE_ID) {
+        result = await run("elevenlabs", () => generateElevenLabs(scene.voiceover, voiceStyle));
+      }
     }
 
-    if (!result) return NextResponse.json({ error: `All selected voice providers failed. ${attempts.join(" | ")}` }, { status: 500 });
+    if (!result) return NextResponse.json({ error: `Voiceover generation failed. ${attempts.join(" | ")}` }, { status: 500 });
 
     return NextResponse.json({
       success: true,
