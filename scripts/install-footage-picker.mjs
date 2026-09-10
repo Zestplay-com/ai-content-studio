@@ -91,7 +91,7 @@ const picker = `              {/* FOOTAGE_PICKER_V1 */}
                       <div style={{ fontWeight: 750 }}>Footage selection saved for this session.</div>
                       <div style={{ color: "#7186a0", fontSize: 12, marginTop: 4 }}>Next production stage: AI Voiceover</div>
                     </div>
-                    <button type="button" disabled={Object.keys(selectedClips).length < stockMatches.length} style={{ ...primaryButton, opacity: Object.keys(selectedClips).length < stockMatches.length ? 0.45 : 1 }}>
+                    <button type="button" onClick={() => document.getElementById("voiceover-section")?.scrollIntoView({ behavior: "smooth", block: "start" })} disabled={Object.keys(selectedClips).length < stockMatches.length} style={{ ...primaryButton, opacity: Object.keys(selectedClips).length < stockMatches.length ? 0.45 : 1 }}>
                       Continue to Voiceover →
                     </button>
                   </div>
