@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/install-footage-picker.mjs && node scripts/install-voiceover.mjs && node scripts/install-captions.mjs",
+    "prebuild": "node scripts/install-footage-picker.mjs && node scripts/install-voiceover.mjs && node scripts/install-captions.mjs && node scripts/install-timeline.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint ."
@@ -20,6 +20,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.0.0",
+    "eslint-config-next": "16.3.4",
     "eslint-config-next": "16.3.4",
     "typescript": "^5.0.0"
   }
