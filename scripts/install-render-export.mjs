@@ -9,8 +9,8 @@ if (text.includes("RENDER_EXPORT_V1")) {
 }
 
 // Put the export function immediately before the component's JSX return.
-// This keeps it unambiguously inside the component's JavaScript scope and
-// avoids accidentally inserting JavaScript into a JSX expression.
+// This keeps it inside the component's JavaScript scope and prevents
+// JavaScript from ever being inserted into a JSX expression.
 const returnAnchor = "  return (";
 if (!text.includes(returnAnchor)) throw new Error("Component return anchor was not found.");
 
@@ -68,15 +68,21 @@ const functionBlock = `  function exportRenderManifest() {
 
 text = text.replace(returnAnchor, functionBlock + returnAnchor);
 
-const marker = '                      <div style={{ marginTop: 14, padding: 14, borderRadius: 12, background: "#0b1b2c", border: "1px solid #29476a" }}>';
-if (!text.includes(marker)) throw new Error("Timeline ready panel marker was not found.");
+// The timeline installer intentionally leaves this stable marker in the JSX.
+// Insert the export control next to that marker instead of matching a fragile
+// generated <div> string. This makes the installer resilient to UI formatting
+// changes in install-timeline.mjs.
+const marker = "              {/* TIMELINE_V1 */}";
+if (!text.includes(marker)) throw new Error("Timeline installer marker was not found.");
 
-const replacement = `                      <div style={{ marginTop: 14, padding: 14, borderRadius: 12, background: "#0b1b2c", border: "1px solid #29476a" }}>
-                        <div style={{ fontWeight: 800 }}>TIMELINE READY</div>
-                        <div style={{ color: "#8fa4bd", fontSize: 12, marginTop: 4 }}>All scenes are ordered with footage, voiceover and caption metadata. Export a render manifest to create the MP4 locally with FFmpeg.</div>
-                        <button type="button" onClick={exportRenderManifest} style={{ ...primaryButton, marginTop: 12 }}>Export Render Manifest →</button>
-                      </div>`;
-text = text.replace(marker, replacement);
+const ui = `
+              {timelineReady && (
+                <div style={{ marginTop: 12 }}>
+                  <button type="button" onClick={exportRenderManifest} style={primaryButton}>Export Render Manifest →</button>
+                </div>
+              )}
+`;
+text = text.replace(marker, marker + ui);
 
 writeFileSync(path, text);
 console.log("Render manifest export installed successfully.");
