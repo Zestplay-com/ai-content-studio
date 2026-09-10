@@ -17,6 +17,10 @@ const stateAnchor = '  const [voiceoverError, setVoiceoverError] = useState("");
 if (!text.includes(stateAnchor)) throw new Error("Voiceover state anchor was not found.");
 text = text.replace(stateAnchor, stateAnchor + '  const [recordingScene, setRecordingScene] = useState<number | null>(null);\n  const [recordingSeconds, setRecordingSeconds] = useState(0);\n  const [recordingError, setRecordingError] = useState("");\n  const recorderRef = useRef<MediaRecorder | null>(null);\n  const recordingStreamRef = useRef<MediaStream | null>(null);\n  const recordingTimerRef = useRef<number | null>(null);\n');
 
+const voiceState = '  const [voiceovers, setVoiceovers] = useState<Record<number, { audio_url: string; voice: string; voice_style: string }>>({});';
+if (!text.includes(voiceState)) throw new Error("Voiceover state declaration was not found.");
+text = text.replace(voiceState, '  const [voiceovers, setVoiceovers] = useState<Record<number, { audio_url: string; voice: string; voice_style: string; source?: string; file_name?: string }>>({});');
+
 const resetAnchor = '    setVoiceovers({});\n    setVoiceoverError("");\n';
 if (!text.includes(resetAnchor)) throw new Error("Voiceover reset anchor was not found.");
 text = text.replace(resetAnchor, resetAnchor + '    setRecordingScene(null);\n    setRecordingSeconds(0);\n    setRecordingError("");\n');
