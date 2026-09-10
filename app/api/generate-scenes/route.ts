@@ -1,22 +1,14 @@
-import OpenAI from "openai";
 import { NextResponse } from "next/server";
+import { generateAiText } from "@/lib/ai-router";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
-
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "AI is not configured yet. Add OPENAI_API_KEY to the Vercel server environment." },
-        { status: 500 },
-      );
-    }
-
     const body = await request.json();
     const script = typeof body.script === "string" ? body.script.trim() : "";
     const format = typeof body.format === "string" ? body.format : "YouTube";
+    const provider = body.provider;
 
     if (!script) {
       return NextResponse.json({ error: "Please generate or enter a script first." }, { status: 400 });
@@ -26,9 +18,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "The script is too long for scene planning. Please keep it under 30,000 characters." }, { status: 400 });
     }
 
-    const client = new OpenAI({ apiKey });
-    const response = await client.responses.create({
-      model: "gpt-5.6-luna",
+    const result = await generateAiText({
+      provider,
       instructions: `You are the scene director for AI Content Studio. Turn a finished video script into a practical production plan for ${format}.
 
 Return ONLY valid JSON. The JSON must be an object with a "scenes" array. Each scene must contain exactly these fields:
@@ -47,18 +38,11 @@ Rules:
 - Avoid vague searches such as "success" or "business" when a more specific search is possible.
 - Keep visual prompts cinematic but practical.
 - Do not add narration that is not in the supplied script.
-- Make duration_seconds realistic for natural speech.
-
-Example shape only:
-{"scenes":[{"number":1,"title":"The Hook","voiceover":"...","visual_prompt":"...","stock_search":"person working alone late at night laptop","duration_seconds":8}]} `,
+- Make duration_seconds realistic for natural speech.`,
       input: `Create the scene plan for this script:\n\n${script}`,
     });
 
-    const raw = response.output_text?.trim() || "";
-    if (!raw) {
-      return NextResponse.json({ error: "The AI returned an empty scene plan. Please try again." }, { status: 502 });
-    }
-
+    const raw = result.text.trim();
     let parsed: unknown;
     try {
       parsed = JSON.parse(raw);
@@ -71,11 +55,12 @@ Example shape only:
       return NextResponse.json({ error: "The AI returned an invalid scene plan. Please try again." }, { status: 502 });
     }
 
-    return NextResponse.json(parsed);
+    return NextResponse.json({ ...(parsed as object), provider: result.provider });
   } catch (error) {
     console.error("Scene generation error:", error);
+    const message = error instanceof Error ? error.message : "Unknown server error";
     return NextResponse.json(
-      { error: "We could not generate the scene plan right now. Please try again." },
+      { error: `Scene generation failed: ${message}` },
       { status: 500 },
     );
   }
