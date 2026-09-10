@@ -8,27 +8,21 @@ let text = readFileSync(path, "utf8");
 const showState = '  const [showVoiceoverStage, setShowVoiceoverStage] = useState(false);\n';
 const providerState = '  const [voiceoverProvider, setVoiceoverProvider] = useState("auto");\n';
 
-// Repair any duplicate state declarations produced by older versions of this installer.
-const showStatePattern = /(^\\s*const \[showVoiceoverStage, setShowVoiceoverStage\] = useState\(false\);\\n?)+/gm;
-const providerStatePattern = /(^\\s*const \[voiceoverProvider, setVoiceoverProvider\] = useState\("auto"\);\\n?)+/gm;
+// Repair duplicate state declarations produced by older versions of this installer.
+const showStatePattern = /^[ \t]*const \[showVoiceoverStage, setShowVoiceoverStage\] = useState\(false\);[ \t]*\r?\n?/gm;
+const providerStatePattern = /^[ \t]*const \[voiceoverProvider, setVoiceoverProvider\] = useState\("auto"\);[ \t]*\r?\n?/gm;
 text = text.replace(showStatePattern, "");
 text = text.replace(providerStatePattern, "");
 
 // Ensure the footage picker state exists exactly once.
 const stockState = '  const [stockError, setStockError] = useState("");\n';
-if (!text.includes(showState)) {
-  if (!text.includes(stockState)) throw new Error("Stock error state was not found.");
-  text = text.replace(stockState, stockState + showState);
-}
+if (!text.includes(stockState)) throw new Error("Stock error state was not found.");
+text = text.replace(stockState, stockState + showState);
 
 // Add the voiceover provider state exactly once.
-if (!text.includes(providerState)) {
-  if (!text.includes(showState)) throw new Error("Voiceover stage state was not found.");
-  text = text.replace(showState, showState + providerState);
-}
+text = text.replace(showState, showState + providerState);
 
-// Add the stage marker once. If it is already present, keep the rest of the
-// file untouched except for the state normalization above.
+// Add the stage marker once.
 if (!text.includes("VOICEOVER_STAGE_V1")) {
   const voiceMarker = '              {/* VOICEOVER_V1 */}';
   const voiceStart = text.indexOf(voiceMarker);
