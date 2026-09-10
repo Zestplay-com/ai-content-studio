@@ -37,10 +37,17 @@ text = text.replace(
   'onClick={() => { goToWorkflowStep("timeline", "timeline-section"); }}',
 );
 
-// Add stable IDs to the existing generated stages without changing their logic.
 text = text.replace(
   '<section id="voiceover-section" style={{ ...card, marginTop: 18, borderColor: "#29476a" }}>',
   '<section id="voiceover-section" style={{ ...card, marginTop: 18, borderColor: "#29476a", scrollMarginTop: 90 }}>',
+);
+text = text.replace(
+  '<section style={{ ...card, marginTop: 18, borderColor: "#29476a" }}>\n                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>\n                    <div><h2 style={{ margin: 0, fontSize: 22 }}>Automatic Captions</h2>',
+  '<section id="captions-section" style={{ ...card, marginTop: 18, borderColor: "#29476a", scrollMarginTop: 90 }}>\n                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>\n                    <div><h2 style={{ margin: 0, fontSize: 22 }}>Automatic Captions</h2>',
+);
+text = text.replace(
+  '<section style={{ ...card, marginTop: 18, borderColor: "#29476a" }}>\n                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}><div><h2 style={{ margin: 0, fontSize: 22 }}>Automatic Timeline Assembly</h2>',
+  '<section id="timeline-section" style={{ ...card, marginTop: 18, borderColor: "#29476a", scrollMarginTop: 90 }}>\n                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}><div><h2 style={{ margin: 0, fontSize: 22 }}>Automatic Timeline Assembly</h2>',
 );
 
 const nav = `
