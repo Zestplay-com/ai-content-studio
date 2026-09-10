@@ -38,13 +38,19 @@ text = text.replace(
   '{showVoiceoverStage && stockMatches.length > 0 && Object.keys(selectedClips).length === stockMatches.length && (',
 );
 
-text = text.replace(
+const voiceMarker = '              {/* VOICEOVER_V1 */}';
+const voiceStart = text.indexOf(voiceMarker);
+if (voiceStart === -1) throw new Error("VOICEOVER_V1 marker was not found.");
+const sectionStart = text.indexOf('<section style={{ ...card, marginTop: 18, borderColor: "#29476a" }}>', voiceStart);
+if (sectionStart === -1) throw new Error("Voiceover section was not found after VOICEOVER_V1 marker.");
+text = text.slice(0, sectionStart) + text.slice(sectionStart).replace(
   '<section style={{ ...card, marginTop: 18, borderColor: "#29476a" }}>',
-  '<section id="voiceover-section" style={{ ...card, marginTop: 18, borderColor: "#29476a" }}>',
+  '<section id="voiceover-section" style={{ ...card, marginTop: 18, borderColor: "#29476a" }}>'
 );
 
 const controlsMarker = '                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 18 }}>\n';
-if (text.includes(controlsMarker) && !text.includes("VOICEOVER_STAGE_PROVIDER_CONTROLS")) {
+const controlsStart = text.indexOf(controlsMarker, voiceStart);
+if (controlsStart !== -1 && !text.includes("VOICEOVER_STAGE_PROVIDER_CONTROLS")) {
   const controls = `                  {/* VOICEOVER_STAGE_PROVIDER_CONTROLS */}\n                  <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 10, marginBottom: 14 }}>
                     <select value={voiceoverProvider} onChange={(e) => setVoiceoverProvider(e.target.value)} style={input}>
                       <option value="auto">Auto — OpenAI → AI Gateway fallback</option>
@@ -54,12 +60,17 @@ if (text.includes(controlsMarker) && !text.includes("VOICEOVER_STAGE_PROVIDER_CO
                     </select>
                     <div style={{ color: "#7186a0", fontSize: 11, display: "flex", alignItems: "center" }}>Auto uses OpenAI first, then tries Vercel AI Gateway if OpenAI fails.</div>
                   </div>\n`;
-  text = text.replace(controlsMarker, controls + controlsMarker);
+  text = text.slice(0, controlsStart) + controls + text.slice(controlsStart);
 }
 
 text = text.replace(
   'onClick={() => document.getElementById("voiceover-section")?.scrollIntoView({ behavior: "smooth", block: "start" })}',
   'onClick={() => { setShowVoiceoverStage(true); window.requestAnimationFrame(() => document.getElementById("voiceover-section")?.scrollIntoView({ behavior: "smooth", block: "start" })); }}',
+);
+
+text = text.replace(
+  '              {/* VOICEOVER_STAGE_V1 */}',
+  '              {/* VOICEOVER_STAGE_V1 */}',
 );
 
 writeFileSync(path, text);
