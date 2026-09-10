@@ -10,6 +10,20 @@ const OPENAI_VOICE_MAP: Record<string, string> = {
   Energetic: "verse",
 };
 
+const GEMINI_VOICE_MAP: Record<string, string> = {
+  Natural: "Kore",
+  "Deep & cinematic": "Charon",
+  "Warm & friendly": "Aoede",
+  Energetic: "Puck",
+};
+
+const XAI_VOICE_MAP: Record<string, string> = {
+  Natural: "eve",
+  "Deep & cinematic": "ara",
+  "Warm & friendly": "eve",
+  Energetic: "leo",
+};
+
 function styleInstructions(style: string) {
   switch (style) {
     case "Deep & cinematic":
@@ -27,6 +41,26 @@ function dataUrl(bytes: Uint8Array, mime = "audio/mpeg") {
   return `data:${mime};base64,${Buffer.from(bytes).toString("base64")}`;
 }
 
+function pcm16ToWav(pcm: Uint8Array, sampleRate = 24000, channels = 1) {
+  const header = Buffer.alloc(44);
+  const byteRate = sampleRate * channels * 2;
+  const blockAlign = channels * 2;
+  header.write("RIFF", 0);
+  header.writeUInt32LE(36 + pcm.byteLength, 4);
+  header.write("WAVE", 8);
+  header.write("fmt ", 12);
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(channels, 22);
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE(byteRate, 28);
+  header.writeUInt16LE(blockAlign, 32);
+  header.writeUInt16LE(16, 34);
+  header.write("data", 36);
+  header.writeUInt32LE(pcm.byteLength, 40);
+  return new Uint8Array(Buffer.concat([header, Buffer.from(pcm)]));
+}
+
 async function generateOpenAI(text: string, voiceStyle: string) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY is not configured.");
@@ -40,14 +74,14 @@ async function generateOpenAI(text: string, voiceStyle: string) {
     response_format: "mp3",
     speed: 1.0,
   });
-  return { audio_url: dataUrl(new Uint8Array(await speech.arrayBuffer())), voice, provider: "openai" };
+  return { audio_url: dataUrl(new Uint8Array(await speech.arrayBuffer())), voice, provider: "openai", mime_type: "audio/mpeg" };
 }
 
-async function generateElevenLabs(text: string, voiceStyle: string) {
+async function generateElevenLabs(text: string) {
   const apiKey = process.env.ELEVENLABS_API_KEY;
   const voiceId = process.env.ELEVENLABS_VOICE_ID;
   if (!apiKey || !voiceId) {
-    throw new Error("ElevenLabs is optional but not configured. Add ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID, or use Auto/OpenAI.");
+    throw new Error("ElevenLabs is not configured. Add ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID.");
   }
   const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`, {
     method: "POST",
@@ -63,8 +97,55 @@ async function generateElevenLabs(text: string, voiceStyle: string) {
     const detail = await response.text();
     throw new Error(`ElevenLabs request failed (${response.status}): ${detail.slice(0, 300)}`);
   }
-  return { audio_url: dataUrl(new Uint8Array(await response.arrayBuffer())), voice: voiceId, provider: "elevenlabs" };
+  return { audio_url: dataUrl(new Uint8Array(await response.arrayBuffer())), voice: voiceId, provider: "elevenlabs", mime_type: "audio/mpeg" };
 }
+
+async function generateGemini(text: string, voiceStyle: string) {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY is not configured.");
+  const model = process.env.GEMINI_TTS_MODEL || "gemini-2.5-flash-preview-tts";
+  const voice = GEMINI_VOICE_MAP[voiceStyle] || GEMINI_VOICE_MAP.Natural;
+  const prompt = `${styleInstructions(voiceStyle)}\n\nSpeak only the following transcript:\n${text}`;
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseModalities: ["AUDIO"],
+        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
+      },
+    }),
+  });
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Gemini TTS request failed (${response.status}): ${detail.slice(0, 300)}`);
+  }
+  const json = await response.json();
+  const part = json?.candidates?.[0]?.content?.parts?.find((item: any) => item?.inlineData?.data);
+  if (!part?.inlineData?.data) throw new Error("Gemini TTS returned no audio data.");
+  const pcm = new Uint8Array(Buffer.from(part.inlineData.data, "base64"));
+  const wav = pcm16ToWav(pcm, 24000, 1);
+  return { audio_url: dataUrl(wav, "audio/wav"), voice, provider: "gemini", mime_type: "audio/wav" };
+}
+
+async function generateXAI(text: string, voiceStyle: string) {
+  const apiKey = process.env.XAI_API_KEY;
+  if (!apiKey) throw new Error("XAI_API_KEY is not configured.");
+  const voice = process.env.XAI_VOICE_ID || XAI_VOICE_MAP[voiceStyle] || XAI_VOICE_MAP.Natural;
+  const response = await fetch("https://api.x.ai/v1/tts", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ text, voice_id: voice, language: "en" }),
+  });
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`xAI TTS request failed (${response.status}): ${detail.slice(0, 300)}`);
+  }
+  return { audio_url: dataUrl(new Uint8Array(await response.arrayBuffer())), voice, provider: "xai", mime_type: "audio/mpeg" };
+}
+
+type VoiceResult = { audio_url: string; voice: string; provider: string; mime_type: string };
 
 export async function POST(request: Request) {
   try {
@@ -81,7 +162,7 @@ export async function POST(request: Request) {
     }
 
     const attempts: string[] = [];
-    const run = async (name: string, fn: () => Promise<{ audio_url: string; voice: string; provider: string }>) => {
+    const run = async (name: string, fn: () => Promise<VoiceResult>) => {
       try { return await fn(); }
       catch (error) {
         attempts.push(`${name}: ${error instanceof Error ? error.message : "failed"}`);
@@ -89,15 +170,18 @@ export async function POST(request: Request) {
       }
     };
 
-    let result: { audio_url: string; voice: string; provider: string } | null = null;
+    let result: VoiceResult | null = null;
     if (provider === "openai") result = await run("openai", () => generateOpenAI(scene.voiceover, voiceStyle));
-    else if (provider === "elevenlabs") result = await run("elevenlabs", () => generateElevenLabs(scene.voiceover, voiceStyle));
+    else if (provider === "elevenlabs") result = await run("elevenlabs", () => generateElevenLabs(scene.voiceover));
+    else if (provider === "gemini") result = await run("gemini", () => generateGemini(scene.voiceover, voiceStyle));
+    else if (provider === "xai") result = await run("xai", () => generateXAI(scene.voiceover, voiceStyle));
     else {
-      // Auto deliberately uses direct provider APIs. It never depends on Vercel AI Gateway.
+      // Auto is a real failover chain. If a provider is out of credits, rate-limited,
+      // unavailable, or misconfigured, the next configured provider is tried.
       result = await run("openai", () => generateOpenAI(scene.voiceover, voiceStyle));
-      if (!result && process.env.ELEVENLABS_API_KEY && process.env.ELEVENLABS_VOICE_ID) {
-        result = await run("elevenlabs", () => generateElevenLabs(scene.voiceover, voiceStyle));
-      }
+      if (!result) result = await run("elevenlabs", () => generateElevenLabs(scene.voiceover));
+      if (!result) result = await run("gemini", () => generateGemini(scene.voiceover, voiceStyle));
+      if (!result) result = await run("xai", () => generateXAI(scene.voiceover, voiceStyle));
     }
 
     if (!result) return NextResponse.json({ error: `Voiceover generation failed. ${attempts.join(" | ")}` }, { status: 500 });
@@ -109,7 +193,7 @@ export async function POST(request: Request) {
       voice_style: voiceStyle,
       provider: result.provider,
       audio_url: result.audio_url,
-      mime_type: "audio/mpeg",
+      mime_type: result.mime_type,
     });
   } catch (error) {
     console.error("Voiceover generation error:", error);
