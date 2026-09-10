@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, extname } from "node:path";
+import { join } from "node:path";
 import { spawn } from "node:child_process";
 
 const manifestPath = process.argv[2];
