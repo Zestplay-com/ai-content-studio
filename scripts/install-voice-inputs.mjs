@@ -31,18 +31,17 @@ const voiceStatePattern = /const \[voiceovers, setVoiceovers\] = useState<Record
 if (!voiceStatePattern.test(text)) throw new Error("Voiceover state declaration was not found.");
 text = text.replace(voiceStatePattern, 'const [voiceovers, setVoiceovers] = useState<Record<number, { audio_url: string; voice: string; voice_style: string; source?: string; file_name?: string }>>({});');
 
-// Reset the per-video voice state in the first project-reset block. The exact
-// block varies because the footage/voiceover installers add their own state.
-const resetPattern = /    setStockError\(""\);\n    setShowVoiceoverStage\(false\);\n  \}\n\n  async function generateScript\(\)/;
-if (!resetPattern.test(text)) throw new Error("Stable project reset anchor was not found.");
-text = text.replace(resetPattern,
-  '    setStockError("");\n' +
-  '    setShowVoiceoverStage(false);\n' +
+// The voiceover installer and stage-upgrade installer can add several reset
+// statements between stockError and the end of the function. Anchor only on
+// the stable showVoiceoverStage reset line and insert our state resets after it.
+const resetAnchor = '    setShowVoiceoverStage(false);\n';
+if (!text.includes(resetAnchor)) throw new Error("Voiceover reset anchor was not found.");
+text = text.replace(resetAnchor,
+  resetAnchor +
   '    setVoiceovers({});\n' +
   '    setRecordingScene(null);\n' +
   '    setRecordingSeconds(0);\n' +
-  '    setRecordingError("");\n' +
-  '  }\n\n  async function generateScript()\n'
+  '    setRecordingError("");\n'
 );
 
 const aiState = 'setVoiceovers((current) => ({ ...current, [scene.number]: { audio_url: data.audio_url, voice: data.voice, voice_style: data.voice_style } }));';
