@@ -8,21 +8,16 @@ let text = readFileSync(path, "utf8");
 const showState = '  const [showVoiceoverStage, setShowVoiceoverStage] = useState(false);\n';
 const providerState = '  const [voiceoverProvider, setVoiceoverProvider] = useState("auto");\n';
 
-// Repair duplicate state declarations produced by older versions of this installer.
 const showStatePattern = /^[ \t]*const \[showVoiceoverStage, setShowVoiceoverStage\] = useState\(false\);[ \t]*\r?\n?/gm;
 const providerStatePattern = /^[ \t]*const \[voiceoverProvider, setVoiceoverProvider\] = useState\("auto"\);[ \t]*\r?\n?/gm;
 text = text.replace(showStatePattern, "");
 text = text.replace(providerStatePattern, "");
 
-// Ensure the footage picker state exists exactly once.
 const stockState = '  const [stockError, setStockError] = useState("");\n';
 if (!text.includes(stockState)) throw new Error("Stock error state was not found.");
 text = text.replace(stockState, stockState + showState);
-
-// Add the voiceover provider state exactly once.
 text = text.replace(showState, showState + providerState);
 
-// Add the stage marker once.
 if (!text.includes("VOICEOVER_STAGE_V1")) {
   const voiceMarker = '              {/* VOICEOVER_V1 */}';
   const voiceStart = text.indexOf(voiceMarker);
@@ -30,7 +25,6 @@ if (!text.includes("VOICEOVER_STAGE_V1")) {
   text = text.slice(0, voiceStart) + '              {/* VOICEOVER_STAGE_V1 */}\n' + text.slice(voiceStart);
 }
 
-// Reset the stage when a new project is generated.
 text = text.replace(
   '    setStockError("");\n  }\n\n  async function generateScript()',
   '    setStockError("");\n    setShowVoiceoverStage(false);\n  }\n\n  async function generateScript()',
@@ -69,12 +63,11 @@ const controlsStart = text.indexOf(controlsMarker, voiceStart);
 if (controlsStart !== -1 && !text.includes("VOICEOVER_STAGE_PROVIDER_CONTROLS")) {
   const controls = `                  {/* VOICEOVER_STAGE_PROVIDER_CONTROLS */}\n                  <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 10, marginBottom: 14 }}>
                     <select value={voiceoverProvider} onChange={(e) => setVoiceoverProvider(e.target.value)} style={input}>
-                      <option value="auto">Auto — OpenAI → AI Gateway fallback</option>
+                      <option value="auto">Auto — OpenAI → ElevenLabs fallback</option>
                       <option value="openai">OpenAI TTS</option>
-                      <option value="gateway-xai">Vercel AI Gateway — Grok TTS</option>
                       <option value="elevenlabs">ElevenLabs (optional)</option>
                     </select>
-                    <div style={{ color: "#7186a0", fontSize: 11, display: "flex", alignItems: "center" }}>Auto uses OpenAI first, then tries Vercel AI Gateway if OpenAI fails.</div>
+                    <div style={{ color: "#7186a0", fontSize: 11, display: "flex", alignItems: "center" }}>Auto uses your direct OpenAI API key first. It does not require Vercel AI Gateway.</div>
                   </div>\n`;
   text = text.slice(0, controlsStart) + controls + text.slice(controlsStart);
 }
