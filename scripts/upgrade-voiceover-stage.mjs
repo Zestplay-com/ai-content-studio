@@ -63,11 +63,13 @@ const controlsStart = text.indexOf(controlsMarker, voiceStart);
 if (controlsStart !== -1 && !text.includes("VOICEOVER_STAGE_PROVIDER_CONTROLS")) {
   const controls = `                  {/* VOICEOVER_STAGE_PROVIDER_CONTROLS */}\n                  <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 10, marginBottom: 14 }}>
                     <select value={voiceoverProvider} onChange={(e) => setVoiceoverProvider(e.target.value)} style={input}>
-                      <option value="auto">Auto — OpenAI → ElevenLabs fallback</option>
+                      <option value="auto">Auto — OpenAI → ElevenLabs → Gemini → xAI</option>
                       <option value="openai">OpenAI TTS</option>
-                      <option value="elevenlabs">ElevenLabs (optional)</option>
+                      <option value="elevenlabs">ElevenLabs</option>
+                      <option value="gemini">Gemini TTS</option>
+                      <option value="xai">xAI TTS</option>
                     </select>
-                    <div style={{ color: "#7186a0", fontSize: 11, display: "flex", alignItems: "center" }}>Auto uses your direct OpenAI API key first. It does not require Vercel AI Gateway.</div>
+                    <div style={{ color: "#7186a0", fontSize: 11, display: "flex", alignItems: "center" }}>Auto tries the next configured provider when a provider hits a limit, fails, or is unavailable. No Vercel AI Gateway required.</div>
                   </div>\n`;
   text = text.slice(0, controlsStart) + controls + text.slice(controlsStart);
 }
