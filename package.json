@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/install-footage-picker.mjs",
+    "prebuild": "node scripts/install-footage-picker.mjs && node scripts/install-voiceover.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint ."
