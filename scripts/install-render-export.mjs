@@ -8,8 +8,11 @@ if (text.includes("RENDER_EXPORT_V1")) {
   process.exit(0);
 }
 
-const anchor = '  function buildTimeline() {';
-if (!text.includes(anchor)) throw new Error("Timeline function anchor was not found.");
+// Put the export function immediately before the component's JSX return.
+// This keeps it unambiguously inside the component's JavaScript scope and
+// avoids accidentally inserting JavaScript into a JSX expression.
+const returnAnchor = "  return (";
+if (!text.includes(returnAnchor)) throw new Error("Component return anchor was not found.");
 
 const functionBlock = `  function exportRenderManifest() {
     try {
@@ -18,10 +21,10 @@ const functionBlock = `  function exportRenderManifest() {
       if (Object.keys(captions).length !== scenes.length) throw new Error("Generate captions first.");
       if (Object.keys(selectedClips).length !== stockMatches.length) throw new Error("Choose footage for every matched scene first.");
 
-      const renderScenes = scenes.map((scene: any) => {
-        const match = stockMatches.find((item: any) => item.scene_number === scene.number);
+      const renderScenes = scenes.map((scene: Scene) => {
+        const match = stockMatches.find((item) => item.scene_number === scene.number);
         const selectedId = selectedClips[scene.number];
-        const clip = match?.results?.find((item: any) => item.id === selectedId);
+        const clip = match?.results?.find((item) => item.id === selectedId);
         const audio = voiceovers[scene.number];
         if (!clip?.video_url) throw new Error(\`Scene \${scene.number} has no selected video URL.\`);
         if (!audio?.audio_url) throw new Error(\`Scene \${scene.number} has no voiceover audio.\`);
@@ -60,8 +63,10 @@ const functionBlock = `  function exportRenderManifest() {
     }
   }
 
+  // RENDER_EXPORT_V1
 `;
-text = text.replace(anchor, functionBlock + anchor);
+
+text = text.replace(returnAnchor, functionBlock + returnAnchor);
 
 const marker = '                      <div style={{ marginTop: 14, padding: 14, borderRadius: 12, background: "#0b1b2c", border: "1px solid #29476a" }}>';
 if (!text.includes(marker)) throw new Error("Timeline ready panel marker was not found.");
@@ -72,5 +77,6 @@ const replacement = `                      <div style={{ marginTop: 14, padding:
                         <button type="button" onClick={exportRenderManifest} style={{ ...primaryButton, marginTop: 12 }}>Export Render Manifest →</button>
                       </div>`;
 text = text.replace(marker, replacement);
+
 writeFileSync(path, text);
 console.log("Render manifest export installed successfully.");
