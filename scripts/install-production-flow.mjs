@@ -88,7 +88,7 @@ const functionBlock = `  async function renderVideoInBrowser() {
         const match = stockMatches.find((item) => item.scene_number === scene.number);
         const clip = match?.results?.find((item: any) => item.id === selectedClips[scene.number]);
         const audioData = voiceovers[scene.number]?.audio_url;
-        if (!clip?.video_url || !audioData) throw new Error(`Scene ${scene.number} is missing footage or voiceover audio.`);
+        if (!clip?.video_url || !audioData) throw new Error("Scene " + scene.number + " is missing footage or voiceover audio.");
 
         const video = document.createElement("video");
         video.crossOrigin = "anonymous";
@@ -120,7 +120,7 @@ const functionBlock = `  async function renderVideoInBrowser() {
             if (activeCaptions.length > 0) {
               const captionText = activeCaptions.map((caption) => caption.text).join(" ");
               const fontSize = portrait ? 54 : 48;
-              ctx.font = `800 ${fontSize}px Arial, sans-serif`;
+              ctx.font = "800 " + fontSize + "px Arial, sans-serif";
               ctx.textAlign = "center";
               ctx.textBaseline = "middle";
               const maxWidth = width * 0.82;
@@ -128,7 +128,7 @@ const functionBlock = `  async function renderVideoInBrowser() {
               const lines: string[] = [];
               let line = "";
               for (const word of words) {
-                const test = line ? `${line} ${word}` : word;
+                const test = line ? line + " " + word : word;
                 if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = word; } else line = test;
               }
               if (line) lines.push(line);
@@ -164,7 +164,7 @@ const functionBlock = `  async function renderVideoInBrowser() {
       setRenderedVideoUrl(url);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `ai-content-studio-video.${extension}`;
+      link.download = "ai-content-studio-video." + extension;
       document.body.appendChild(link);
       link.click();
       link.remove();
