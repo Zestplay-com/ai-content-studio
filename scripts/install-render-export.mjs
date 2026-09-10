@@ -3,14 +3,13 @@ import { readFileSync, writeFileSync } from "node:fs";
 const path = "app/page.tsx";
 let text = readFileSync(path, "utf8");
 
-if (text.includes("RENDER_EXPORT_V1")) {
+if (text.includes("RENDER_EXPORT_V2")) {
   console.log("Render export already installed.");
   process.exit(0);
 }
 
-// Put the export function immediately before the component's JSX return.
-// This keeps it inside the component's JavaScript scope and prevents
-// JavaScript from ever being inserted into a JSX expression.
+// Keep the function in the component's JavaScript scope, immediately before
+// the JSX return. Do not depend on another installer's generated markup.
 const returnAnchor = "  return (";
 if (!text.includes(returnAnchor)) throw new Error("Component return anchor was not found.");
 
@@ -63,17 +62,15 @@ const functionBlock = `  function exportRenderManifest() {
     }
   }
 
-  // RENDER_EXPORT_V1
+  // RENDER_EXPORT_V2
 `;
 
 text = text.replace(returnAnchor, functionBlock + returnAnchor);
 
-// The timeline installer intentionally leaves this stable marker in the JSX.
-// Insert the export control next to that marker instead of matching a fragile
-// generated <div> string. This makes the installer resilient to UI formatting
-// changes in install-timeline.mjs.
-const marker = "              {/* TIMELINE_V1 */}";
-if (!text.includes(marker)) throw new Error("Timeline installer marker was not found.");
+// Use the page's structural closing tag instead of fragile generated JSX.
+// This installer is therefore independent of the timeline installer's exact UI.
+const mainEnd = "    </main>";
+if (!text.includes(mainEnd)) throw new Error("Main page container marker was not found.");
 
 const ui = `
               {timelineReady && (
@@ -82,7 +79,7 @@ const ui = `
                 </div>
               )}
 `;
-text = text.replace(marker, marker + ui);
+text = text.replace(mainEnd, ui + mainEnd);
 
 writeFileSync(path, text);
 console.log("Render manifest export installed successfully.");
