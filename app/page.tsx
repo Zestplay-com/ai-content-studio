@@ -23,10 +23,42 @@ export default function Home() {
   const [language, setLanguage] = useState("English");
   const [voice, setVoice] = useState("Natural");
   const [created, setCreated] = useState(false);
+  const [script, setScript] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState("");
 
   function createProject() {
     if (!topic.trim()) return;
     setCreated(true);
+    setScript("");
+    setError("");
+  }
+
+  async function generateScript() {
+    if (!topic.trim() || generating) return;
+
+    setGenerating(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/generate-script", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic, length, format, language }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Could not generate the script.");
+      }
+
+      setScript(data.script || "");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not generate the script.");
+    } finally {
+      setGenerating(false);
+    }
   }
 
   return (
@@ -82,7 +114,7 @@ export default function Home() {
           </>
         ) : (
           <section>
-            <button onClick={() => { setShowCreator(false); setCreated(false); }} style={backButton}>← Dashboard</button>
+            <button onClick={() => { setShowCreator(false); setCreated(false); setScript(""); setError(""); }} style={backButton}>← Dashboard</button>
             <div style={{ maxWidth: 850, margin: "28px auto 60px" }}>
               <span style={pill}>NEW VIDEO</span>
               <h1 style={{ fontSize: "clamp(34px, 5vw, 52px)", letterSpacing: "-0.04em", margin: "16px 0 10px" }}>What do you want to create?</h1>
@@ -105,11 +137,38 @@ export default function Home() {
               {created && (
                 <div style={{ ...card, marginTop: 16, borderColor: "#29476a" }}>
                   <div style={{ fontWeight: 750, marginBottom: 8 }}>Project created successfully.</div>
-                  <p style={{ color: "#8fa4bd", margin: 0, lineHeight: 1.6 }}>Your project is ready for the next stage: AI script generation.</p>
+                  <p style={{ color: "#8fa4bd", margin: 0, lineHeight: 1.6 }}>Your project is ready for AI script generation.</p>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
                     <span style={tag}>{length}</span><span style={tag}>{format}</span><span style={tag}>{language}</span><span style={tag}>{voice}</span>
                   </div>
-                  <button style={{ ...primaryButton, marginTop: 18, opacity: 0.7 }} disabled>Generate AI Script — Next Step</button>
+                  <button onClick={generateScript} disabled={generating} style={{ ...primaryButton, marginTop: 18, opacity: generating ? 0.6 : 1 }}>
+                    {generating ? "Writing your script…" : script ? "Regenerate AI Script" : "Generate AI Script →"}
+                  </button>
+                </div>
+              )}
+
+              {error && (
+                <div style={{ ...card, marginTop: 16, borderColor: "#6b3340" }}>
+                  <div style={{ fontWeight: 700 }}>Something went wrong</div>
+                  <p style={{ color: "#d7a9b2", marginBottom: 0, lineHeight: 1.5 }}>{error}</p>
+                </div>
+              )}
+
+              {script && (
+                <div style={{ ...card, marginTop: 16 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 12 }}>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: 18 }}>AI-generated script</div>
+                      <div style={{ color: "#7186a0", fontSize: 12, marginTop: 4 }}>Review and edit before moving to scenes and voiceover.</div>
+                    </div>
+                    <span style={status}>AI READY</span>
+                  </div>
+                  <textarea value={script} onChange={(e) => setScript(e.target.value)} style={{ ...input, minHeight: 520, lineHeight: 1.7, resize: "vertical" }} />
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
+                    <button style={primaryButton} onClick={generateScript} disabled={generating}>{generating ? "Generating…" : "Regenerate"}</button>
+                    <button style={secondaryButton} disabled>Continue to Scenes →</button>
+                  </div>
+                  <p style={{ color: "#7186a0", fontSize: 12, marginBottom: 0 }}>Scenes are the next production stage. We’ll activate this after the script step is fully tested.</p>
                 </div>
               )}
             </div>
@@ -121,6 +180,7 @@ export default function Home() {
 }
 
 const primaryButton = { background: "#f7f9fc", color: "#07111f", border: 0, borderRadius: 11, padding: "11px 17px", fontWeight: 750, cursor: "pointer" } as const;
+const secondaryButton = { background: "transparent", color: "#9db3cf", border: "1px solid #263852", borderRadius: 11, padding: "11px 17px", fontWeight: 700, cursor: "not-allowed" } as const;
 const backButton = { background: "transparent", color: "#9db3cf", border: "1px solid #263852", borderRadius: 10, padding: "9px 13px", cursor: "pointer" } as const;
 const card = { border: "1px solid #1d3048", background: "#0b1829", borderRadius: 16, padding: 20 } as const;
 const pill = { display: "inline-block", padding: "7px 10px", border: "1px solid #263852", borderRadius: 999, color: "#9db3cf", fontSize: 11, letterSpacing: "0.08em", fontWeight: 700 } as const;
