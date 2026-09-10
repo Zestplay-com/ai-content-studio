@@ -3,13 +3,11 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 export async function POST(request: Request) {
   try {
-    if (!process.env.OPENAI_API_KEY) {
+    const apiKey = process.env.OPENAI_API_KEY;
+
+    if (!apiKey) {
       return NextResponse.json(
         { error: "AI is not configured yet. Add OPENAI_API_KEY to the Vercel server environment." },
         { status: 500 },
@@ -29,6 +27,8 @@ export async function POST(request: Request) {
     if (topic.length > 5000) {
       return NextResponse.json({ error: "Your topic is too long. Please keep it under 5,000 characters." }, { status: 400 });
     }
+
+    const client = new OpenAI({ apiKey });
 
     const response = await client.responses.create({
       model: "gpt-5.6-luna",
@@ -57,8 +57,9 @@ Requirements:
     return NextResponse.json({ script });
   } catch (error) {
     console.error("Script generation error:", error);
+    const message = error instanceof Error ? error.message : "Unknown server error";
     return NextResponse.json(
-      { error: "We could not generate the script right now. Please try again." },
+      { error: `Script generation failed: ${message}` },
       { status: 500 },
     );
   }
