@@ -33,6 +33,13 @@ text = text.replace(
   '      setScript(data.script);\n      setAiProviderUsed(data.provider || aiProvider);\n',
 );
 
+// The scene API also returns the provider used, so include it in the local
+// response type. Without this, strict TypeScript rejects data.provider.
+text = text.replace(
+  'let data: { scenes?: Scene[]; error?: string } = {};',
+  'let data: { scenes?: Scene[]; provider?: string; error?: string } = {};',
+);
+
 text = text.replace(
   '      setScenes(Array.isArray(data.scenes) ? data.scenes : []);\n',
   '      setScenes(Array.isArray(data.scenes) ? data.scenes : []);\n      if (data.provider) setAiProviderUsed(data.provider);\n',
