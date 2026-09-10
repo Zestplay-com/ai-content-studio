@@ -257,6 +257,7 @@ const primaryButton = { background: "#f7f9fc", color: "#07111f", border: 0, bord
 const secondaryButton = { background: "transparent", color: "#9db3cf", border: "1px solid #263852", borderRadius: 11, padding: "11px 17px", fontWeight: 700, cursor: "pointer" } as const;
 const backButton = { background: "transparent", color: "#9db3cf", border: "1px solid #263852", borderRadius: 10, padding: "9px 13px", cursor: "pointer" } as const;
 const card = { border: "1px solid #1d3048", background: "#0b1829", borderRadius: 16, padding: 20 } as const;
+const errorBox = { border: "1px solid #6b3340", background: "#24131a", color: "#f0c4cc", borderRadius: 12, padding: "12px 14px", lineHeight: 1.5, fontSize: 13 } as const;
 const pill = { display: "inline-block", padding: "7px 10px", border: "1px solid #263852", borderRadius: 999, color: "#9db3cf", fontSize: 11, letterSpacing: "0.08em", fontWeight: 700 } as const;
 const status = { border: "1px solid #263852", borderRadius: 999, padding: "6px 9px", color: "#9db3cf", fontSize: 12 } as const;
 const label = { display: "block", color: "#c5d1df", fontSize: 13, fontWeight: 650, marginBottom: 8 } as const;
