@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/install-ai-provider.mjs && node scripts/install-footage-picker.mjs && node scripts/install-voiceover.mjs && node scripts/install-captions.mjs && node scripts/install-timeline.mjs && node scripts/install-render-export.mjs",
+    "prebuild": "node scripts/install-ai-provider.mjs && node scripts/install-footage-picker.mjs && node scripts/install-voiceover.mjs && node scripts/upgrade-voiceover-stage.mjs && node scripts/install-captions.mjs && node scripts/install-timeline.mjs && node scripts/install-render-export.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint ."
@@ -22,6 +22,7 @@
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "16.3.4",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "eslint": "^9.0.0"
   }
 }
