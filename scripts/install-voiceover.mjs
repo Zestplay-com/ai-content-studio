@@ -9,26 +9,28 @@ if (text.includes("VOICEOVER_V1")) {
 }
 
 text = text.replace(
-  '  const [selectedClips, setSelectedClips] = useState<Record<number, number>>({});\n',
-  '  const [selectedClips, setSelectedClips] = useState<Record<number, number>>({});\n  const [voiceoverStyle, setVoiceoverStyle] = useState("Natural");\n  const [voiceovers, setVoiceovers] = useState<Record<number, { audio_url: string; voice: string; voice_style: string }>>({});\n  const [generatingVoiceover, setGeneratingVoiceover] = useState<number | null>(null);\n  const [voiceoverError, setVoiceoverError] = useState("");\n',
+  '  const [selectedClips, setSelectedClips] = useState<Record<number, number>>({});\\n',
+  '  const [selectedClips, setSelectedClips] = useState<Record<number, number>>({});\\n  const [voiceoverStyle, setVoiceoverStyle] = useState("Natural");\\n  const [voiceovers, setVoiceovers] = useState<Record<number, { audio_url: string; voice: string; voice_style: string }>>({});\\n  const [generatingVoiceover, setGeneratingVoiceover] = useState<number | null>(null);\\n  const [voiceoverError, setVoiceoverError] = useState("");\\n',
 );
 
 text = text.replace(
-  '    setSelectedClips({});\n  }\n\n  async function generateScript()',
-  '    setSelectedClips({});\n    setVoiceovers({});\n    setVoiceoverError("");\n  }\n\n  async function generateScript()',
+  '    setSelectedClips({});\\n  }\\n\\n  async function generateScript()',
+  '    setSelectedClips({});\\n    setVoiceovers({});\\n    setVoiceoverError("");\\n  }\\n\\n  async function generateScript()',
 );
 
 text = text.replace(
-  '      setSelectedClips({});\n    } catch (err) {\n      setError',
-  '      setSelectedClips({});\n      setVoiceovers({});\n      setVoiceoverError("");\n    } catch (err) {\n      setError',
+  '      setSelectedClips({});\\n    } catch (err) {\\n      setError',
+  '      setSelectedClips({});\\n      setVoiceovers({});\\n      setVoiceoverError("");\\n    } catch (err) {\\n      setError',
 );
 
 text = text.replace(
-  '    setSelectedClips({});\n    try {\n      const response = await fetch("/api/generate-scenes"',
-  '    setSelectedClips({});\n    setVoiceovers({});\n    setVoiceoverError("");\n    try {\n      const response = await fetch("/api/generate-scenes"',
+  '    setSelectedClips({});\\n    try {\\n      const response = await fetch("/api/generate-scenes"',
+  '    setSelectedClips({});\\n    setVoiceovers({});\\n    setVoiceoverError("");\\n    try {\\n      const response = await fetch("/api/generate-scenes"',
 );
 
-const marker = '              {/* FOOTAGE_PICKER_V1 */}';
+// The footage picker was upgraded to V2 and owns the selectedClips state.
+// Keep this installer compatible with that current marker.
+const marker = '              {/* FOOTAGE_PICKER_V2 */}';
 if (!text.includes(marker)) throw new Error("Footage picker marker was not found in app/page.tsx");
 
 const functionBlock = `  async function generateSceneVoiceover(scene: any) {
@@ -57,7 +59,7 @@ const functionBlock = `  async function generateSceneVoiceover(scene: any) {
 
 `;
 
-const fnAnchor = '  return (\n';
+const fnAnchor = '  return (\\n';
 if (!text.includes(fnAnchor)) throw new Error("Return anchor was not found in app/page.tsx");
 text = text.replace(fnAnchor, functionBlock + fnAnchor);
 
