@@ -8,10 +8,15 @@ if (text.includes("AI_PROVIDER_V2")) {
   process.exit(0);
 }
 
-text = text.replace(
-  '  const [stockError, setStockError] = useState("");\n',
-  '  const [stockError, setStockError] = useState("");\n  const [aiProvider, setAiProvider] = useState("auto");\n  const [aiProviderUsed, setAiProviderUsed] = useState("");\n',
-);
+const stateAnchor = '  const [stockError, setStockError] = useState("");\n';
+if (text.includes(stateAnchor)) {
+  text = text.replace(
+    stateAnchor,
+    `${stateAnchor}  const [aiProvider, setAiProvider] = useState("auto");\n  const [aiProviderUsed, setAiProviderUsed] = useState("");\n`,
+  );
+} else if (!text.includes('const [aiProvider, setAiProvider]')) {
+  throw new Error("AI provider state anchor was not found in app/page.tsx");
+}
 
 text = text.replace(
   'body: JSON.stringify({ topic, length, format, language }),',
@@ -32,13 +37,6 @@ text = text.replace(
   '      setScenes(Array.isArray(data.scenes) ? data.scenes : []);\n',
   '      setScenes(Array.isArray(data.scenes) ? data.scenes : []);\n      if (data.provider) setAiProviderUsed(data.provider);\n',
 );
-
-const oldMarker = "AI_PROVIDER_V1";
-if (!text.includes(oldMarker)) {
-  throw new Error("AI provider v1 marker was not found in app/page.tsx");
-}
-
-text = text.replace(/\s*\/\* AI_PROVIDER_V1 \*\/[\s\S]*?\n\s*<\/div>\n\s*<\/div>\n\s*<\/div>\n/, "\n");
 
 const anchor = '              <div style={{ ...card, marginTop: 24 }}>\n';
 if (!text.includes(anchor)) throw new Error("Creator card anchor was not found in app/page.tsx");
