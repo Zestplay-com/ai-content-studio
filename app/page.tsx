@@ -11,6 +11,21 @@ type Scene = {
   duration_seconds: number;
 };
 
+type StockMatch = {
+  scene_number: number;
+  query: string;
+  orientation: string;
+  results: Array<{
+    id: number;
+    duration: number;
+    thumbnail: string;
+    pexels_url: string;
+    creator: string;
+    creator_url: string;
+    video_url: string | null;
+  }>;
+};
+
 const features = [
   { title: "AI Script", text: "Turn an idea into a structured, engaging video script." },
   { title: "AI Voice", text: "Generate natural voiceovers for every scene." },
@@ -38,14 +53,19 @@ export default function Home() {
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [error, setError] = useState("");
   const [sceneError, setSceneError] = useState("");
+  const [matchingStock, setMatchingStock] = useState(false);
+  const [stockMatches, setStockMatches] = useState<StockMatch[]>([]);
+  const [stockError, setStockError] = useState("");
 
   function createProject() {
     if (!topic.trim()) return;
     setCreated(true);
     setScript("");
     setScenes([]);
+    setStockMatches([]);
     setError("");
     setSceneError("");
+    setStockError("");
   }
 
   async function generateScript() {
@@ -64,7 +84,9 @@ export default function Home() {
       if (!response.ok) throw new Error(data.error || "Could not generate the script.");
       setScript(data.script || "");
       setScenes([]);
+      setStockMatches([]);
       setSceneError("");
+      setStockError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not generate the script.");
     } finally {
@@ -76,6 +98,8 @@ export default function Home() {
     if (!script.trim() || generatingScenes) return;
     setGeneratingScenes(true);
     setSceneError("");
+    setStockMatches([]);
+    setStockError("");
     try {
       const response = await fetch("/api/generate-scenes", {
         method: "POST",
@@ -91,6 +115,31 @@ export default function Home() {
       setSceneError(err instanceof Error ? err.message : "Could not generate scenes.");
     } finally {
       setGeneratingScenes(false);
+    }
+  }
+
+  async function matchStock() {
+    if (!scenes.length || matchingStock) return;
+    setMatchingStock(true);
+    setStockError("");
+    try {
+      const response = await fetch("/api/match-stock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scenes, format }),
+      });
+      const text = await response.text();
+      let data: { matches?: StockMatch[]; error?: string } = {};
+      try { data = JSON.parse(text); } catch { throw new Error(`The stock service returned an unexpected response (${response.status}).`); }
+      if (!response.ok) throw new Error(data.error || "Could not search stock footage.");
+      setStockMatches(Array.isArray(data.matches) ? data.matches : []);
+      if (!Array.isArray(data.matches) || data.matches.length === 0) {
+        throw new Error("No stock footage matches were returned. Try generating the scenes again.");
+      }
+    } catch (err) {
+      setStockError(err instanceof Error ? err.message : "Could not search stock footage.");
+    } finally {
+      setMatchingStock(false);
     }
   }
 
@@ -117,7 +166,7 @@ export default function Home() {
           </>
         ) : (
           <section>
-            <button type="button" onClick={() => { setShowCreator(false); setCreated(false); setScript(""); setScenes([]); setError(""); setSceneError(""); }} style={backButton}>← Dashboard</button>
+            <button type="button" onClick={() => { setShowCreator(false); setCreated(false); setScript(""); setScenes([]); setStockMatches([]); setError(""); setSceneError(""); setStockError(""); }} style={backButton}>← Dashboard</button>
             <div style={{ maxWidth: 850, margin: "28px auto 60px" }}>
               <span style={pill}>NEW VIDEO</span>
               <h1 style={{ fontSize: "clamp(34px, 5vw, 52px)", letterSpacing: "-0.04em", margin: "16px 0 10px" }}>What do you want to create?</h1>
@@ -165,10 +214,37 @@ export default function Home() {
                     <div style={sceneSection}><div style={miniLabel}>VOICEOVER</div><p style={sceneText}>{scene.voiceover}</p></div>
                     <div style={sceneSection}><div style={miniLabel}>VISUAL DIRECTION</div><p style={sceneText}>{scene.visual_prompt}</p></div>
                     <div style={{ marginTop: 12 }}><div style={miniLabel}>STOCK SEARCH</div><span style={searchTag}>{scene.stock_search}</span></div>
+                    {stockMatches.find((match) => match.scene_number === scene.number)?.results?.[0] && (() => {
+                      const match = stockMatches.find((item) => item.scene_number === scene.number)!;
+                      const best = match.results[0];
+                      return <div style={{ marginTop: 14, borderTop: "1px solid #1d3048", paddingTop: 14 }}>
+                        <div style={miniLabel}>MATCHED FOOTAGE</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "150px 1fr", gap: 12, alignItems: "center" }}>
+                          <div style={{ aspectRatio: "16 / 9", borderRadius: 9, overflow: "hidden", background: "#07111f" }}><img src={best.thumbnail} alt="Matched Pexels footage" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>
+                          <div><div style={{ fontWeight: 700 }}>Pexels footage selected</div><div style={{ color: "#7186a0", fontSize: 12, marginTop: 4 }}>{best.duration}s · {best.creator}</div><div style={{ display: "flex", gap: 8, marginTop: 8 }}><a href={best.video_url || best.pexels_url} target="_blank" rel="noreferrer" style={smallButton}>Preview</a><a href={best.pexels_url} target="_blank" rel="noreferrer" style={smallButton}>Pexels</a></div></div>
+                        </div>
+                      </div>;
+                    })()}
                   </article>)}
                 </div>
-                <div style={{ ...card, marginTop: 16, borderColor: "#29476a" }}><div style={{ fontWeight: 750 }}>Next production stage</div><p style={{ color: "#8fa4bd", lineHeight: 1.6, marginBottom: 0 }}>These scene directions are now ready to drive automatic stock-footage search and matching. Voiceover, captions, and MP4 rendering come after that.</p></div>
+
+                {!stockMatches.length ? (
+                  <div style={{ ...card, marginTop: 16, borderColor: "#29476a" }}>
+                    <div style={{ fontWeight: 750 }}>Next production stage: Smart Footage Matching</div>
+                    <p style={{ color: "#8fa4bd", lineHeight: 1.6, marginBottom: 0 }}>Your AI scenes are ready. We’ll now search Pexels for footage that matches the meaning of each scene, using the correct orientation for {format}.</p>
+                    <button type="button" onClick={matchStock} disabled={matchingStock} style={{ ...primaryButton, marginTop: 16, opacity: matchingStock ? 0.6 : 1 }}>{matchingStock ? `Finding footage for ${scenes.length} scenes…` : "Find Matching Footage →"}</button>
+                    {matchingStock && <p style={{ color: "#7186a0", fontSize: 12, marginBottom: 0 }}>Searching each scene with its own contextual query. This can take a little while for longer videos.</p>}
+                  </div>
+                ) : (
+                  <div style={{ ...card, marginTop: 16, borderColor: "#29476a" }}>
+                    <div style={{ fontWeight: 750 }}>Smart footage matching complete</div>
+                    <p style={{ color: "#8fa4bd", lineHeight: 1.6, marginBottom: 10 }}>{stockMatches.length} of {scenes.length} scenes have Pexels footage candidates. The first candidate is shown for each scene and can be previewed before we build the editing timeline.</p>
+                    <span style={status}>FOOTAGE READY</span>
+                  </div>
+                )}
               </div>}
+
+              {stockError && <div style={{ ...card, marginTop: 16, borderColor: "#6b3340" }}><div style={{ fontWeight: 700 }}>Stock footage search failed</div><p style={{ color: "#d7a9b2", marginBottom: 0, lineHeight: 1.5 }}>{stockError}</p></div>}
             </div>
           </section>
         )}
@@ -190,3 +266,4 @@ const sceneSection = { borderTop: "1px solid #1d3048", paddingTop: 12, marginTop
 const miniLabel = { color: "#7186a0", fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", marginBottom: 5 } as const;
 const sceneText = { color: "#c5d1df", lineHeight: 1.6, margin: 0, fontSize: 14 } as const;
 const searchTag = { display: "inline-block", background: "#07111f", border: "1px solid #263852", borderRadius: 8, padding: "8px 10px", color: "#d5dfeb", fontSize: 13 } as const;
+const smallButton = { display: "inline-block", border: "1px solid #263852", borderRadius: 8, padding: "7px 9px", color: "#c5d1df", textDecoration: "none", fontSize: 12 } as const;
