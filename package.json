@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/install-ai-provider.mjs && node scripts/install-footage-picker.mjs && node scripts/install-voiceover.mjs && node scripts/upgrade-voiceover-stage.mjs && node scripts/install-captions.mjs && node scripts/install-timeline.mjs && node scripts/install-render-export.mjs && node scripts/install-workflow-navigation.mjs",
+    "prebuild": "node scripts/install-ai-provider.mjs && node scripts/install-footage-picker.mjs && node scripts/install-voiceover.mjs && node scripts/upgrade-voiceover-stage.mjs && node scripts/install-captions.mjs && node scripts/install-timeline.mjs && node scripts/install-render-export.mjs && node scripts/install-production-flow.mjs && node scripts/install-workflow-navigation.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint ."
