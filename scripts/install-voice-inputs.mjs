@@ -3,14 +3,16 @@ import { readFileSync, writeFileSync } from "node:fs";
 const path = "app/page.tsx";
 let text = readFileSync(path, "utf8");
 
-if (text.includes("VOICE_INPUTS_V2")) {
+if (text.includes("VOICE_INPUTS_V3")) {
   console.log("Voice input options already installed.");
   process.exit(0);
 }
 
 // This installer runs after the footage picker and voiceover installers.
-// Those installers intentionally mutate the same page, so use stable patterns
-// instead of depending on an exact reset block from an earlier installer.
+// They intentionally mutate the same page, so this installer must not depend
+// on a fragile project-reset block. State cleanup is best-effort; the feature
+// itself must never fail the production build because another installer changed
+// the reset function shape.
 text = text.replace(
   'import { useState } from "react";',
   'import { useRef, useState } from "react";'
@@ -31,18 +33,24 @@ const voiceStatePattern = /const \[voiceovers, setVoiceovers\] = useState<Record
 if (!voiceStatePattern.test(text)) throw new Error("Voiceover state declaration was not found.");
 text = text.replace(voiceStatePattern, 'const [voiceovers, setVoiceovers] = useState<Record<number, { audio_url: string; voice: string; voice_style: string; source?: string; file_name?: string }>>({});');
 
-// The voiceover installer and stage-upgrade installer can add several reset
-// statements between stockError and the end of the function. Anchor only on
-// the stable showVoiceoverStage reset line and insert our state resets after it.
-const resetAnchor = '    setShowVoiceoverStage(false);\n';
-if (!text.includes(resetAnchor)) throw new Error("Voiceover reset anchor was not found.");
-text = text.replace(resetAnchor,
-  resetAnchor +
-  '    setVoiceovers({});\n' +
-  '    setRecordingScene(null);\n' +
-  '    setRecordingSeconds(0);\n' +
-  '    setRecordingError("");\n'
-);
+// Best-effort cleanup in whichever reset block exists. Do not throw if another
+// installer has changed the surrounding reset code. A project reset can still
+// function without these optional cleanup calls.
+const resetCandidates = [
+  '    setShowVoiceoverStage(false);\n',
+  '    setVoiceoverError("");\n',
+  '    setStockError("");\n',
+];
+const resetAnchor = resetCandidates.find((candidate) => text.includes(candidate));
+if (resetAnchor && !text.includes('    setRecordingScene(null);\n')) {
+  text = text.replace(resetAnchor,
+    resetAnchor +
+    '    setVoiceovers({});\n' +
+    '    setRecordingScene(null);\n' +
+    '    setRecordingSeconds(0);\n' +
+    '    setRecordingError("");\n'
+  );
+}
 
 const aiState = 'setVoiceovers((current) => ({ ...current, [scene.number]: { audio_url: data.audio_url, voice: data.voice, voice_style: data.voice_style } }));';
 if (!text.includes(aiState)) throw new Error("AI voiceover state update was not found.");
@@ -141,7 +149,7 @@ const functionBlock = `  async function audioFileToDataUrl(file: File) {
     }
   }
 
-  // VOICE_INPUTS_V2
+  // VOICE_INPUTS_V3
 `;
 text = text.replace(fnAnchor, functionBlock + fnAnchor);
 
@@ -151,7 +159,7 @@ if (!text.includes(controlsMarker)) throw new Error("Voiceover provider controls
 const ui = `
                   <div style={{ marginBottom: 18, padding: 16, borderRadius: 14, background: "#081522", border: "1px solid #29476a" }}>
                     <div style={{ fontWeight: 800, fontSize: 16 }}>Choose how you want to provide your voice</div>
-                    <div style={{ color: "#8fa4bd", fontSize: 12, lineHeight: 1.55, marginTop: 5 }}>AI voice is optional. You can import a voice made in ElevenLabs or any other app, record your own voice here, or use our AI voice when it is available.</div>
+                    <div style={{ color: "#8fa4bd", fontSize: 12, lineHeight: 1.55, marginTop: 5 }}>AI voice is optional. Import a voice made in ElevenLabs or another app, record your own voice here, or use AI when available.</div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10, marginTop: 14 }}>
                       <div style={{ padding: 13, border: "1px solid #1d3048", borderRadius: 12, background: "#0b1b2c" }}><div style={{ fontWeight: 750 }}>🤖 AI Voice</div><div style={{ color: "#7186a0", fontSize: 11, marginTop: 4 }}>Use configured AI providers when available.</div></div>
                       <div style={{ padding: 13, border: "1px solid #1d3048", borderRadius: 12, background: "#0b1b2c" }}><div style={{ fontWeight: 750 }}>📁 Import Voice</div><div style={{ color: "#7186a0", fontSize: 11, marginTop: 4 }}>Upload MP3, WAV, M4A, OGG, AAC or another browser-supported audio file.</div></div>
